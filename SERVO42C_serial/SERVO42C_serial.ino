@@ -25,7 +25,6 @@ void loop() {
 
   // Send data over serial
   sendSerialData(slaveAddr, functionCode, data, checksum);
-
   // Delay to avoid spamming; adjust the delay as needed
   delay(2000);
 
