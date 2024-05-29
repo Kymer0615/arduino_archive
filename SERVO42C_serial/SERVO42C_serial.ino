@@ -9,8 +9,22 @@ uint8_t rxCnt=0;
 uint8_t getCheckSum(uint8_t *buffer,uint8_t len);
 bool waitingForACK(uint8_t len, int timeout, byte slaveAddr);
 void printToMonitor(uint8_t *value);
-
 SoftwareSerial motor_0(2, 3); // RX, TX
+
+
+void getRealTimeLocation(byte slaveAddr);
+void getPulseNumber(byte slaveAddr);
+void getError(byte slaveAddr);
+void getEnStatus(byte slaveAddr);
+void getLockedRotorProtection(byte slaveAddr);
+void getShaftProtection(byte slaveAddr);
+void calibrateEncoder(byte slaveAddr);
+void motorMove(byte slaveAddr, byte dir, byte speed);
+void motorStop(byte slaveAddr);
+void gotoZero(byte slaveAddr);
+void setZero(byte slaveAddr);
+void motorMoveWithPulses(byte slaveAddr, byte dir, byte speed, int32_t pulseNumber);
+
 
 void setup() {
   motor_0.begin(38400);
@@ -23,6 +37,78 @@ void setup() {
 }
 
 void loop() {
+
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n');  // Read the input until newline
+
+    int underscoreIndex = input.indexOf('_');  // Find the position of the underscore
+    if (underscoreIndex == -1) return;  // If no underscore, invalid command
+
+    String command = input.substring(0, underscoreIndex);  // Extract command
+    String hexString = input.substring(underscoreIndex + 1);  // Extract hex string
+    byte slaveAddr = strtol(hexString.c_str(), NULL, 16);  // Convert hex string to byte
+
+    if (command == "getRealTimeLocation") {
+      getRealTimeLocation(slaveAddr);
+    } else if (command == "getPulseNumber") {
+      getPulseNumber(slaveAddr);
+    } else if (command == "getError") {
+      getError(slaveAddr);
+    } else if (command == "getEnStatus") {
+      getEnStatus(slaveAddr);
+    } else if (command == "getLockedRotorProtection") {
+      getLockedRotorProtection(slaveAddr);
+    } else if (command == "getShaftProtection") {
+      getShaftProtection(slaveAddr);
+    } else if (command == "calibrateEncoder") {
+      calibrateEncoder(slaveAddr);
+    } else if (command == "motorMove") {
+      // Additional parameters needed for motorMove
+      int secondUnderscoreIndex = input.indexOf('_', underscoreIndex + 1);
+      String dirString = input.substring(underscoreIndex + 1, secondUnderscoreIndex);
+      byte dir = dirString.toInt();
+      byte speed = input.substring(secondUnderscoreIndex + 1).toInt();
+      motorMove(slaveAddr, dir, speed);
+    } else if (command == "motorStop") {
+      motorStop(slaveAddr);
+    } else if (command == "gotoZero") {
+      gotoZero(slaveAddr);
+    } else if (command == "setZero") {
+      setZero(slaveAddr);
+    }else if (command == "motorMoveWithPulses") {
+    // Additional parameters for motorMoveWithPulses
+    int secondUnderscoreIndex = input.indexOf('_', underscoreIndex + 1);
+    int thirdUnderscoreIndex = input.indexOf('_', secondUnderscoreIndex + 1);
+    int fourthUnderscoreIndex = input.indexOf('_', thirdUnderscoreIndex + 1);
+    
+    if (secondUnderscoreIndex == -1 || thirdUnderscoreIndex == -1 || fourthUnderscoreIndex == -1) {
+      Serial.println("Invalid parameter format for motorMoveWithPulses");
+      return;
+    }
+
+    // Extract slaveAddr from the first part
+    String slaveAddrString = input.substring(underscoreIndex + 1, secondUnderscoreIndex);
+    byte slaveAddr = strtol(slaveAddrString.c_str(), NULL, 16); // Convert hex string to byte
+
+    // Extract dir from the second part
+    String dirString = input.substring(secondUnderscoreIndex + 1, thirdUnderscoreIndex);
+    byte dir = dirString.toInt();
+
+    // Extract speed from the third part
+    String speedString = input.substring(thirdUnderscoreIndex + 1, fourthUnderscoreIndex);
+    byte speed = speedString.toInt();
+
+    // Extract pulseNumber from the fourth part
+    int32_t pulseNumber = input.substring(fourthUnderscoreIndex + 1).toInt();
+
+    // Call the function with the parsed parameters
+    motorMoveWithPulses(slaveAddr, dir, speed, pulseNumber);
+  }else {
+      Serial.println("Invalid command");
+    }
+  }
+
+  
 //  getRealTimeLocation(0xE0);
 //  getPulseNumber(0xE0);
 //  getError(0xE0);
@@ -112,16 +198,10 @@ void getRealTimeLocation(byte slaveAddr)
     Serial.print("value = ");
     Serial.println(value);
   }
-  else                      //接收位置信息失败（1.检查串口线连接；2.检查电机是否上电；3.检查从机地址，波特率）
-  {
-    while(1)                //快速闪灯，提示运行失败
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(200);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(200);
-    }
+  else{
+   errorLED();
   }
+
   
 }
 
@@ -152,16 +232,10 @@ void getPulseNumber(byte slaveAddr)
     Serial.print("pulseNumber = ");
     Serial.println(pulseNumber);
   }
-  else                      //接收位置信息失败（1.检查串口线连接；2.检查电机是否上电；3.检查从机地址，波特率）
-  {
-    while(1)                //快速闪灯，提示运行失败
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(200);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(200);
-    }
+  else{
+   errorLED();
   }
+
  
 }
 
@@ -190,16 +264,10 @@ void getError(byte slaveAddr)
     Serial.print("error = ");
     Serial.println(error_float);
   }
-  else                      //接收位置信息失败（1.检查串口线连接；2.检查电机是否上电；3.检查从机地址，波特率）
-  {
-    while(1)                //快速闪灯，提示运行失败
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(200);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(200);
-    }
+  else{
+   errorLED();
   }
+
  
 }
 
@@ -228,16 +296,10 @@ void getEnStatus(byte slaveAddr)
     Serial.print("EnStatus = ");
     Serial.println(EnStatusBool);
   }
-  else                      //接收位置信息失败（1.检查串口线连接；2.检查电机是否上电；3.检查从机地址，波特率）
-  {
-    while(1)                //快速闪灯，提示运行失败
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(200);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(200);
-    }
+  else{
+   errorLED();
   }
+
  
 }
 
@@ -266,16 +328,10 @@ void getLockedRotorProtection(byte slaveAddr)
     Serial.print("Locked-rotor protection status = ");
     Serial.println(protectStatus);
   }
-  else                      //接收位置信息失败（1.检查串口线连接；2.检查电机是否上电；3.检查从机地址，波特率）
-  {
-    while(1)                //快速闪灯，提示运行失败
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(200);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(200);
-    }
+  else{
+   errorLED();
   }
+
  
 }
 
@@ -304,16 +360,10 @@ void getShaftProtection(byte slaveAddr)
     Serial.print("Motor shaft protection status = ");
     Serial.println(protectStatusBool);
   }
-  else                      //接收位置信息失败（1.检查串口线连接；2.检查电机是否上电；3.检查从机地址，波特率）
-  {
-    while(1)                //快速闪灯，提示运行失败
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(200);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(200);
-    }
+  else{
+   errorLED();
   }
+
  
 }
 
@@ -347,16 +397,10 @@ void calibrateEncoder(byte slaveAddr)
     Serial.print("Calibration status = ");
     Serial.println(calibrationStatusBool);
   }
-  else                      //接收位置信息失败（1.检查串口线连接；2.检查电机是否上电；3.检查从机地址，波特率）
-  {
-    while(1)                //快速闪灯，提示运行失败
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(200);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(200);
-    }
+  else{
+   errorLED();
   }
+
  
 }
 
@@ -394,16 +438,10 @@ void motorMove(byte slaveAddr, byte dir, byte speed)
     Serial.print("Move motor = ");
     Serial.println(status);
   }
-  else                      //接收位置信息失败（1.检查串口线连接；2.检查电机是否上电；3.检查从机地址，波特率）
-  {
-    while(1)                //快速闪灯，提示运行失败
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(200);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(200);
-    }
+  else{
+   errorLED();
   }
+
  
 }
 
@@ -430,16 +468,10 @@ void motorStop(byte slaveAddr)
     Serial.print("Move stop = ");
     Serial.println(status);
   }
-  else                      //接收位置信息失败（1.检查串口线连接；2.检查电机是否上电；3.检查从机地址，波特率）
-  {
-    while(1)                //快速闪灯，提示运行失败
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(200);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(200);
-    }
+  else{
+   errorLED();
   }
+
  
 }
 
@@ -469,16 +501,10 @@ void gotoZero(byte slaveAddr)
     Serial.print("gotoZero status = ");
     Serial.println(status);
   }
-  else                      //接收位置信息失败（1.检查串口线连接；2.检查电机是否上电；3.检查从机地址，波特率）
-  {
-    while(1)                //快速闪灯，提示运行失败
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(200);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(200);
-    }
+  else{
+   errorLED();
   }
+
 }
 
 void setZero(byte slaveAddr)
@@ -507,16 +533,10 @@ void setZero(byte slaveAddr)
     Serial.print("Set zero status = ");
     Serial.println(status);
   }
-  else                      //接收位置信息失败（1.检查串口线连接；2.检查电机是否上电；3.检查从机地址，波特率）
-  {
-    while(1)                //快速闪灯，提示运行失败
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(200);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(200);
-    }
+  else{
+   errorLED();
   }
+
 }
 
 void motorMoveWithPulses(byte slaveAddr, byte dir, byte speed, int32_t pulseNumber)
@@ -567,16 +587,10 @@ void motorMoveWithPulses(byte slaveAddr, byte dir, byte speed, int32_t pulseNumb
     Serial.print("Move motor with pulse status = ");
     Serial.println(status_str);
   }
-  else                      //接收位置信息失败（1.检查串口线连接；2.检查电机是否上电；3.检查从机地址，波特率）
-  {
-    while(1)                //快速闪灯，提示运行失败
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(200);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(200);
-    }
+  else{
+   errorLED();
   }
+
  
 }
 //////////////////////
@@ -639,4 +653,15 @@ byte getCheckSum(byte *buffer,byte size)
       sum += buffer[i];  //计算累加值
     }
   return(sum&0xFF);     //返回校验和
+}
+
+void errorLED()
+{
+  Serial.println("ERROR");
+  for (int i=0; i<=5;  i++){               //快速闪灯，提示运行失败
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(200);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(200);
+  }
 }
