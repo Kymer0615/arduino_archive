@@ -2,7 +2,7 @@
 #include <SoftwareSerial.h>
 
 
-byte txBuffer[3];
+byte txBuffer[20];
 byte rxBuffer[20]; 
 uint8_t rxCnt=0; 
 
@@ -385,7 +385,7 @@ void calibrateEncoder(byte slaveAddr)
   txBuffer[3] = getCheckSum(txBuffer, 3);  //计算校验和
   motor_0.write(txBuffer,4);   //串口发出读取实时位置指令
 
-  ackStatus = waitingForACK(3, 300000, slaveAddr);      //等待电机应答
+  ackStatus = waitingForACK(3, 30000, slaveAddr);      //等待电机应答
 
   if(ackStatus == true)        //接收到位置信息
   {
