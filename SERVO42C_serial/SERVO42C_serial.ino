@@ -25,7 +25,6 @@ void gotoZero(byte slaveAddr);
 void setZero(byte slaveAddr);
 void motorMoveWithPulses(byte slaveAddr, byte dir, byte speed, int32_t pulseNumber);
 
-
 void setup() {
   motor_0.begin(38400);
   Serial.begin(9600);
