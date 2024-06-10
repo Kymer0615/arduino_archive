@@ -3,6 +3,12 @@ int laserPin = 5;
 void setup() {
   pinMode(laserPin, OUTPUT);
   Serial.begin(9600);
+  
+  pinMode(LED_BUILTIN, OUTPUT);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+  Serial.print("<Arduino is ready>");
 }
 
 void loop() {
@@ -11,10 +17,10 @@ void loop() {
     if (input.startsWith("p")) {
       int brightness = input.substring(1).toInt();
       brightness = map(brightness, 0, 100, 0, 255);
-      Serial.println(brightness);
       analogWrite(laserPin, brightness);
-      Serial.println(input); // Acknowledge the command
-      Serial.flush();
+      Serial.print("<");
+      Serial.print(brightness);
+      Serial.print(">");
     }
   }
 }
