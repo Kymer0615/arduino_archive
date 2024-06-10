@@ -1,17 +1,22 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 
-
+////////////////////////////
+// PRE-DEFINED VARIABLES ///
+////////////////////////////
 byte txBuffer[20];
 byte rxBuffer[20]; 
 uint8_t rxCnt=0; 
-
 uint8_t getCheckSum(uint8_t *buffer,uint8_t len);
 bool waitingForACK(uint8_t len, int timeout, byte slaveAddr);
 void printToMonitor(uint8_t *value);
-SoftwareSerial motor_0(2, 3); // RX, TX
+SoftwareSerial motor(2, 3); // RX, TX
+char startMarker = '<';
+char endMarker = '>';
 
-
+////////////////
+// FUNCTIONS ///
+////////////////
 void getRealTimeLocation(byte slaveAddr);
 void getPulseNumber(byte slaveAddr);
 void getError(byte slaveAddr);
@@ -26,20 +31,21 @@ void setZero(byte slaveAddr);
 void motorMoveWithPulses(byte slaveAddr, byte dir, byte speed, int32_t pulseNumber);
 
 void setup() {
-  motor_0.begin(38400);
+  motor.begin(38400);
   Serial.begin(9600);
   
   pinMode(LED_BUILTIN, OUTPUT);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
+  Serial.print("<Arduino is ready>");
 }
 
 void loop() {
 
   if (Serial.available() > 0) {
     String input = Serial.readStringUntil('\n');  // Read the input until newline
-
+    
     int underscoreIndex = input.indexOf('_');  // Find the position of the underscore
     if (underscoreIndex == -1) return;  // If no underscore, invalid command
 
@@ -81,7 +87,12 @@ void loop() {
     int fourthUnderscoreIndex = input.indexOf('_', thirdUnderscoreIndex + 1);
     
     if (secondUnderscoreIndex == -1 || thirdUnderscoreIndex == -1 || fourthUnderscoreIndex == -1) {
-      Serial.println("Invalid parameter format for motorMoveWithPulses");
+      Serial.print(startMarker);
+      
+      Serial.print("Invalid parameter format for motorMoveWithPulses");
+      Serial.print(";");
+   
+      Serial.print(endMarker);
       return;
     }
 
@@ -103,50 +114,14 @@ void loop() {
     // Call the function with the parsed parameters
     motorMoveWithPulses(slaveAddr, dir, speed, pulseNumber);
   }else {
-      Serial.println("Invalid command");
+      Serial.print(startMarker);
+      
+      Serial.print("Invalid command");
+      Serial.print(";");
+   
+      Serial.print(endMarker);
     }
   }
-
-  
-//  getRealTimeLocation(0xE0);
-//  getPulseNumber(0xE0);
-//  getError(0xE0);
-//  getEnStatus(0xE0);
-//  getLockedRotorProtection(0xE0);
-//  getShaftProtection(0xE0);
-//
-//  calibrateEncoder(0xE0);
-//  Serial.print("fished");
-//
-//  motorMove(0XE0, 1, 10);
-//  delay(2000);
-//  motorStop(0XE0);
-//  gotoZero(0XE0);
-//  motorMoveWithPulses(0XE0, 0, 5, 1000); //slaveAddr dir speed pulses
-//  getRealTimeLocation(0xE0);
-//  delay(20000000);
-//  setLockedRotorProtection(0xE0, 0x00);
-//  setZero(0XE0);
-
-
-//  getRealTimeLocation(0xE0);
-//  delay(2000);
-//  motorMoveWithPulses(0XE0, 0, 5, 1000);
-//  delay(2000);
-//  getRealTimeLocation(0xE0);
-//  delay(2000);
-//  motorStop(0XE0);
-//  delay(200000);
-//  getRealTimeLocation(0xE0);
-//  delay(20000);
-
-//  setZero(0XE0);
-//  gotoZero(0XE0);
-//    delay(20000000);
-//  
-//  delay(2000);
-//  getRealTimeLocation(0xE0);
-//  delay(2000);
 }
 
 
@@ -168,7 +143,7 @@ void getRealTimeLocation(byte slaveAddr)
   txBuffer[0] = slaveAddr;  //从机地址
   txBuffer[1] = 0x30;       //功能码
   txBuffer[2] = getCheckSum(txBuffer,2);  //计算校验和
-  motor_0.write(txBuffer,3);   //串口发出读取实时位置指令
+  motor.write(txBuffer,3);   //串口发出读取实时位置指令
 
   ackStatus = waitingForACK(8, 3000, slaveAddr);      //等待电机应答
 
@@ -188,14 +163,22 @@ void getRealTimeLocation(byte slaveAddr)
 
     location = carry * 65536L + (carry < 0 ? -value : value); // Adjust based on carry
     digitalWrite(LED_BUILTIN, LOW); //灭灯
+
+    Serial.print(startMarker);
+    
     Serial.print("location = ");
-    Serial.println(location);
-
+    Serial.print(location);
+    Serial.print(";");
+    
     Serial.print("carry = ");
-    Serial.println(carry);
-
+    Serial.print(carry);
+    Serial.print(";");
+    
     Serial.print("value = ");
-    Serial.println(value);
+    Serial.print(value);
+    Serial.print(";");
+    
+    Serial.print(endMarker);
   }
   else{
    errorLED();
@@ -215,7 +198,7 @@ void getPulseNumber(byte slaveAddr)
   txBuffer[0] = slaveAddr;  //从机地址
   txBuffer[1] = 0x33;       //功能码
   txBuffer[2] = getCheckSum(txBuffer,2);  //计算校验和
-  motor_0.write(txBuffer,3);   //串口发出读取实时位置指令
+  motor.write(txBuffer,3);   //串口发出读取实时位置指令
 
   ackStatus = waitingForACK(6, 3000, slaveAddr);      //等待电机应答
 
@@ -228,8 +211,14 @@ void getPulseNumber(byte slaveAddr)
                       ((uint32_t)rxBuffer[4] << 0)
                     );
     digitalWrite(LED_BUILTIN, LOW); //灭灯
+    Serial.print(startMarker);
+
     Serial.print("pulseNumber = ");
-    Serial.println(pulseNumber);
+    Serial.print(pulseNumber);
+    Serial.print(";");
+   
+    Serial.print(endMarker);
+
   }
   else{
    errorLED();
@@ -248,7 +237,7 @@ void getError(byte slaveAddr)
   txBuffer[0] = slaveAddr;  //从机地址
   txBuffer[1] = 0x39;       //功能码
   txBuffer[2] = getCheckSum(txBuffer,2);  //计算校验和
-  motor_0.write(txBuffer,3);   //串口发出读取实时位置指令
+  motor.write(txBuffer,3);   //串口发出读取实时位置指令
 
   ackStatus = waitingForACK(4, 3000, slaveAddr);      //等待电机应答
 
@@ -260,8 +249,13 @@ void getError(byte slaveAddr)
                     );
     error_float = error / (65536L/360);
     digitalWrite(LED_BUILTIN, LOW); //灭灯
+    Serial.print(startMarker);
+    
     Serial.print("error = ");
-    Serial.println(error_float);
+    Serial.print(error_float);
+    Serial.print(";");
+   
+    Serial.print(endMarker);
   }
   else{
    errorLED();
@@ -281,7 +275,7 @@ void getEnStatus(byte slaveAddr)
   txBuffer[0] = slaveAddr;  //从机地址
   txBuffer[1] = 0x3A;       //功能码
   txBuffer[2] = getCheckSum(txBuffer,2);  //计算校验和
-  motor_0.write(txBuffer,3);   //串口发出读取实时位置指令
+  motor.write(txBuffer,3);   //串口发出读取实时位置指令
 
   ackStatus = waitingForACK(3, 3000, slaveAddr);      //等待电机应答
 
@@ -292,8 +286,13 @@ void getEnStatus(byte slaveAddr)
                     );
     EnStatusBool = (EnStatus == 1 ? true : false);
     digitalWrite(LED_BUILTIN, LOW); //灭灯
+    Serial.print(startMarker);
+    
     Serial.print("EnStatus = ");
-    Serial.println(EnStatusBool);
+    Serial.print(EnStatusBool);
+    Serial.print(";");
+   
+    Serial.print(endMarker);
   }
   else{
    errorLED();
@@ -313,7 +312,7 @@ void getLockedRotorProtection(byte slaveAddr)
   txBuffer[0] = slaveAddr;  //从机地址
   txBuffer[1] = 0x3D;       //功能码
   txBuffer[2] = getCheckSum(txBuffer,2);  //计算校验和
-  motor_0.write(txBuffer,3);   //串口发出读取实时位置指令
+  motor.write(txBuffer,3);   //串口发出读取实时位置指令
 
   ackStatus = waitingForACK(3, 3000, slaveAddr);      //等待电机应答
 
@@ -324,8 +323,13 @@ void getLockedRotorProtection(byte slaveAddr)
                     );
 //    protectStatusBool = (protectStatus == 1 ? true : false);
     digitalWrite(LED_BUILTIN, LOW); //灭灯
+    Serial.print(startMarker);
+    
     Serial.print("Locked-rotor protection status = ");
-    Serial.println(protectStatus);
+    Serial.print(protectStatus);
+    Serial.print(";");
+   
+    Serial.print(endMarker);
   }
   else{
    errorLED();
@@ -345,7 +349,7 @@ void getShaftProtection(byte slaveAddr)
   txBuffer[0] = slaveAddr;  //从机地址
   txBuffer[1] = 0x3E;       //功能码
   txBuffer[2] = getCheckSum(txBuffer,2);  //计算校验和
-  motor_0.write(txBuffer,3);   //串口发出读取实时位置指令
+  motor.write(txBuffer,3);   //串口发出读取实时位置指令
 
   ackStatus = waitingForACK(3, 3000, slaveAddr);      //等待电机应答
 
@@ -356,8 +360,13 @@ void getShaftProtection(byte slaveAddr)
                     );
     protectStatusBool = (protectStatus == 1 ? true : false);
     digitalWrite(LED_BUILTIN, LOW); //灭灯
+    Serial.print(startMarker);
+    
     Serial.print("Motor shaft protection status = ");
-    Serial.println(protectStatusBool);
+    Serial.print(protectStatusBool);
+    Serial.print(";");
+   
+    Serial.print(endMarker);
   }
   else{
    errorLED();
@@ -382,7 +391,7 @@ void calibrateEncoder(byte slaveAddr)
   txBuffer[1] = 0x80;       //function 
   txBuffer[2] = 0x00;       //data
   txBuffer[3] = getCheckSum(txBuffer, 3);  //计算校验和
-  motor_0.write(txBuffer,4);   //串口发出读取实时位置指令
+  motor.write(txBuffer,4);   //串口发出读取实时位置指令
 
   ackStatus = waitingForACK(3, 30000, slaveAddr);      //等待电机应答
 
@@ -393,8 +402,12 @@ void calibrateEncoder(byte slaveAddr)
                     );
     calibrationStatusBool = (calibrationStatus == 1 ? true : false);
     digitalWrite(LED_BUILTIN, LOW); //灭灯
+    Serial.print(startMarker);
     Serial.print("Calibration status = ");
-    Serial.println(calibrationStatusBool);
+    Serial.print(calibrationStatusBool);
+    Serial.print(";");
+   
+    Serial.print(endMarker);
   }
   else{
    errorLED();
@@ -415,7 +428,10 @@ void motorMove(byte slaveAddr, byte dir, byte speed)
     data |= speed;
     data |= (dir << 7); 
   } else {
-    Serial.println("Input speed value out of range (0 to 127).");
+    Serial.print(startMarker);
+    Serial.print("Input speed value out of range (0 to 127).");
+    Serial.print(";");
+    Serial.print(endMarker);
   }
       
   digitalWrite(LED_BUILTIN, HIGH); //亮灯
@@ -424,7 +440,7 @@ void motorMove(byte slaveAddr, byte dir, byte speed)
   txBuffer[1] = 0xF6;       //function 
   txBuffer[2] = data;       //data
   txBuffer[3] = getCheckSum(txBuffer, 3);  //计算校验和
-  motor_0.write(txBuffer,4);   //串口发出读取实时位置指令
+  motor.write(txBuffer,4);   //串口发出读取实时位置指令
 
   ackStatus = waitingForACK(3, 3000, slaveAddr);      //等待电机应答
 
@@ -434,8 +450,12 @@ void motorMove(byte slaveAddr, byte dir, byte speed)
                       ((int8_t)rxBuffer[1] << 0)
                     );
     digitalWrite(LED_BUILTIN, LOW); //灭灯
+    Serial.print(startMarker);
     Serial.print("Move motor = ");
-    Serial.println(status);
+    Serial.print(status);
+    Serial.print(";");
+   
+    Serial.print(endMarker);
   }
   else{
    errorLED();
@@ -454,7 +474,7 @@ void motorStop(byte slaveAddr)
   txBuffer[0] = slaveAddr;  
   txBuffer[1] = 0xF7;       //function 
   txBuffer[2] = getCheckSum(txBuffer, 2);  //计算校验和
-  motor_0.write(txBuffer,3);   //串口发出读取实时位置指令
+  motor.write(txBuffer,3);   //串口发出读取实时位置指令
 
   ackStatus = waitingForACK(3, 3000, slaveAddr);      //等待电机应答
 
@@ -464,8 +484,13 @@ void motorStop(byte slaveAddr)
                       ((int8_t)rxBuffer[1] << 0)
                     );
     digitalWrite(LED_BUILTIN, LOW); //灭灯
+    Serial.print(startMarker);
+    
     Serial.print("Move stop = ");
-    Serial.println(status);
+    Serial.print(status);
+    Serial.print(";");
+   
+    Serial.print(endMarker);
   }
   else{
    errorLED();
@@ -487,7 +512,7 @@ void gotoZero(byte slaveAddr)
   txBuffer[1] = 0x94;       //function 
   txBuffer[2] = data;       //data
   txBuffer[3] = getCheckSum(txBuffer, 3);  //计算校验和
-  motor_0.write(txBuffer,4);   //串口发出读取实时位置指令
+  motor.write(txBuffer,4);   //串口发出读取实时位置指令
 
   ackStatus = waitingForACK(3, 10000, slaveAddr);      //等待电机应答
 
@@ -497,8 +522,13 @@ void gotoZero(byte slaveAddr)
                       ((int8_t)rxBuffer[1] << 0)
                     );
     digitalWrite(LED_BUILTIN, LOW); //灭灯
+    Serial.print(startMarker);
+    
     Serial.print("gotoZero status = ");
-    Serial.println(status);
+    Serial.print(status);
+    Serial.print(";");
+   
+    Serial.print(endMarker);
   }
   else{
    errorLED();
@@ -519,7 +549,7 @@ void setZero(byte slaveAddr)
   txBuffer[1] = 0x91;       //function 
   txBuffer[2] = data;       //data
   txBuffer[3] = getCheckSum(txBuffer, 3);  //计算校验和
-  motor_0.write(txBuffer,4);   //串口发出读取实时位置指令
+  motor.write(txBuffer,4);   //串口发出读取实时位置指令
 
   ackStatus = waitingForACK(3, 10000, slaveAddr);      //等待电机应答
 
@@ -529,8 +559,13 @@ void setZero(byte slaveAddr)
                       ((int8_t)rxBuffer[1] << 0)
                     );
     digitalWrite(LED_BUILTIN, LOW); //灭灯
+    Serial.print(startMarker);
+    
     Serial.print("Set zero status = ");
-    Serial.println(status);
+    Serial.print(status);
+    Serial.print(";");
+   
+    Serial.print(endMarker);
   }
   else{
    errorLED();
@@ -549,7 +584,12 @@ void motorMoveWithPulses(byte slaveAddr, byte dir, byte speed, int32_t pulseNumb
     specs |= speed;
     specs |= (dir << 7); 
   } else {
-    Serial.println("Input speed or dir value out of range (0 to 127).");
+    Serial.print(startMarker);
+    
+    Serial.print("Input speed or dir value out of range (0 to 127).");
+    Serial.print(";");
+   
+    Serial.print(endMarker);
   }
   if (pulseNumber>= 0 && pulseNumber < 4294967296L){
     txBuffer[0] = slaveAddr;  
@@ -561,12 +601,17 @@ void motorMoveWithPulses(byte slaveAddr, byte dir, byte speed, int32_t pulseNumb
     txBuffer[6] = (pulseNumber >> 0) & 0xFF; 
     txBuffer[7] = getCheckSum(txBuffer, 7);  //计算校验和
   } else {
-    Serial.println("pulseNumber out of range (0 to 4294967296L).");
+    Serial.print(startMarker);
+    
+    Serial.print("pulseNumber out of range (0 to 4294967296L).");
+    Serial.print(";");
+   
+    Serial.print(endMarker);
   }
   digitalWrite(LED_BUILTIN, HIGH); //亮灯
 
   
-  motor_0.write(txBuffer,8);   //串口发出读取实时位置指令
+  motor.write(txBuffer,8);   //串口发出读取实时位置指令
 
   ackStatus = waitingForACK(3, 6000, slaveAddr);      //等待电机应答
 
@@ -583,8 +628,13 @@ void motorMoveWithPulses(byte slaveAddr, byte dir, byte speed, int32_t pulseNumb
       status_str = "complete";
     }
     digitalWrite(LED_BUILTIN, LOW); //灭灯
+    Serial.print(startMarker);
+    
     Serial.print("Move motor with pulse status = ");
-    Serial.println(status_str);
+    Serial.print(status_str);
+    Serial.print(";");
+   
+    Serial.print(endMarker);
   }
   else{
    errorLED();
@@ -606,9 +656,9 @@ bool waitingForACK(uint8_t len, int timeout, byte slaveAddr)
   rxCnt = 0;           //接收计数值置0
   while(1)
   {
-    if (motor_0.available() > 0)     //串口接收到数据
+    if (motor.available() > 0)     //串口接收到数据
     {
-      rxByte = motor_0.read();       //读取1字节数据
+      rxByte = motor.read();       //读取1字节数据
       if(rxCnt != 0)
       {
         rxBuffer[rxCnt++] = rxByte; //存储数据
@@ -656,7 +706,7 @@ byte getCheckSum(byte *buffer,byte size)
 
 void errorLED()
 {
-  Serial.println("ERROR");
+  Serial.print("ERROR");
   for (int i=0; i<=5;  i++){               //快速闪灯，提示运行失败
     digitalWrite(LED_BUILTIN, HIGH);
     delay(200);
