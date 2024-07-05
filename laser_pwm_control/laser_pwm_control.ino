@@ -8,7 +8,7 @@ void setup() {
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
-  Serial.print("<Arduino is ready>");
+  Serial.println("<Arduino is ready>");
 }
 
 void loop() {
@@ -20,7 +20,7 @@ void loop() {
       analogWrite(laserPin, brightness);
       Serial.print("<");
       Serial.print(brightness);
-      Serial.print(">");
+      Serial.println(">");
     }
   }
 }

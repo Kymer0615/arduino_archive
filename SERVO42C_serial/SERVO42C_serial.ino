@@ -613,32 +613,37 @@ void motorMoveWithPulses(byte slaveAddr, byte dir, byte speed, int32_t pulseNumb
   
   motor.write(txBuffer,8);   //串口发出读取实时位置指令
 
-  ackStatus = waitingForACK(3, 6000, slaveAddr);      //等待电机应答
+  Serial.print(startMarker);
+  Serial.print("start;");
+  Serial.print(endMarker);
 
-  if(ackStatus == true)        //接收到位置信息
-  {
-    status = (int8_t)(
-                      ((int8_t)rxBuffer[1] << 0)
-                    );
-    if (status == 0){
-      status_str = "fail";
-    }else if (status == 1){
-      status_str = "starting";
-    }else if (status == 2){
-      status_str = "complete";
-    }
-    digitalWrite(LED_BUILTIN, LOW); //灭灯
-    Serial.print(startMarker);
-    
-    Serial.print("Move motor with pulse status = ");
-    Serial.print(status_str);
-    Serial.print(";");
-   
-    Serial.print(endMarker);
-  }
-  else{
-   errorLED();
-  }
+
+//  ackStatus = waitingForACK(3, 6000, slaveAddr);      //等待电机应答
+//
+//  if(ackStatus == true)        //接收到位置信息
+//  {
+//    status = (int8_t)(
+//                      ((int8_t)rxBuffer[1] << 0)
+//                    );
+//    if (status == 0){
+//      status_str = "fail";
+//    }else if (status == 1){
+//      status_str = "starting";
+//    }else if (status == 2){
+//      status_str = "complete";
+//    }
+//    digitalWrite(LED_BUILTIN, LOW); //灭灯
+//    Serial.print(startMarker);
+//    
+//    Serial.print("Move motor with pulse status = ");
+//    Serial.print(status_str);
+//    Serial.print(";");
+//   
+//    Serial.print(endMarker);
+//  }
+//  else{
+//   errorLED();
+//  }
 
  
 }
